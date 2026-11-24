@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: NOVA ingest API
+  version: 0.1.0
+  description: |
+    Write-only API. The tablet sends one anonymous session record per session.
+    There is no endpoint that reads records and none that accepts media.
+    The client (tenant) ID is read from the token, never from the body.
+    The data has no direct identifiers (not "anonymous").
+servers:
+  - url: http://localhost:4010
+    description: Prism mock
+  - url: http://localhost:7071
+    description: Functions Core Tools (local)
+tags:
+  - name: records
+paths:
+  /api/v1/records:
+    post:
+      tags: [records]
+      operationId: postRecord
+      summary: Submit one session record
+      description: |
+        Returns 202 only after the record is in the queue. The tablet deletes its
+        copy only after a 202. Sending the same event_id again is safe.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionRecord"
+            examples:
+              completed-blow-session:
+                summary: A completed session in blow mode
+                value:
+                  event_id: 3f2b8c1e-5d4a-4b7e-9a10-1c2d3e4f5a6b
+                  age_bracket: 9-12
+                  mode: blow
+                  completed: true
+                  duration_s: 170
+                  rating: 4
+                  app_version: 0.1.0
+                  session_hour: "2026-11-24T13:00:00Z"
+      responses:
+        "202":
+          description: Accepted. The record is in the queue.
+        "400":
+          description: Invalid body. Do not retry; the tablet moves the record to its rejected store.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: invalid_body
+                detail: duration_s must be between 0 and 1800
+        "401":
+          description: Missing, invalid or revoked token. The tablet stops sending and asks for enrolment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: invalid_token
+        "413":
+          description: Body larger than 4 KB.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: body_too_large
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Signed client token. The client ID (tid) is read from the token.
+  schemas:
+    SessionRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - event_id
+        - age_bracket
+        - mode
+        - completed
+        - duration_s
+        - app_version
+        - session_hour
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: Created on the tablet when the record is written to the outbox.
+        age_bracket:
+          type: string
+          enum: ["5-8", "9-12", "13-18"]
+        mode:
+          type: string
+          enum: [blow, tap]
+        completed:
+          type: boolean
+        duration_s:
+          type: integer
+          minimum: 0
+          maximum: 1800
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        app_version:
+          type: string
+          minLength: 1
+          maxLength: 16
+        session_hour:
+          type: string
+          format: date-time
+          description: Cut to the hour on the tablet at session end (minutes and seconds are 00).
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
+        detail:
+          type: string

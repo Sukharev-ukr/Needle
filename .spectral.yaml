@@ -1,0 +1,5 @@
+extends: ["spectral:oas"]
+rules:
+  # Our API is write-only and has a single tag; keep the lint strict on the rest.
+  operation-description: warn
+  info-contact: off

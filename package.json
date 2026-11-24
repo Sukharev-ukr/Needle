@@ -1,0 +1,21 @@
+{
+  "name": "nova-cloud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NOVA cloud POC: write-only serverless backend and PWA delivery",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint:api": "spectral lint api/openapi.yaml",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "mock": "prism mock api/openapi.yaml -p 4010",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "devDependencies": {
+    "@stoplight/prism-cli": "^5.0.0",
+    "@stoplight/spectral-cli": "^6.0.0",
+    "prettier": "^3.0.0"
+  }
+}
